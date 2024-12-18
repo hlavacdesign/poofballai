@@ -15,7 +15,8 @@ public class ExampleScript : MonoBehaviour
     // This is the TMP_Text component used as a placeholder within the input field.
     public TMP_Text placeholderText;
 
-    private string backendUrl = "http://127.0.0.1:5000/chat"; // Local dev URL
+    // private string backendUrl = "http://127.0.0.1:5000/chat"; // Local dev URL
+    private string backendUrl = "https://poofballai.onrender.com/chat";
 
     void Start()
     {

@@ -1,7 +1,7 @@
 # This .gitignore file should be placed at the root of your Unity project
 
 
-/poofball-BUILD/
+# /poofball-BUILD/
 
 # =======================================
 # OS generated

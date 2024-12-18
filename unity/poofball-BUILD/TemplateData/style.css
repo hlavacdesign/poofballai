@@ -1,0 +1,51 @@
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden; /* prevent scrollbars */
+}
+
+#unity-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+/* Force canvas to fill the entire container */
+#unity-canvas {
+    background: #231F20;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Hide all other UI elements */
+#unity-loading-bar,
+#unity-logo,
+#unity-footer,
+#unity-webgl-logo,
+#unity-build-title,
+#unity-fullscreen-button,
+#unity-warning {
+    display: none !important;
+}
+
+/* Remove desktop/mobile specific positioning,
+   we want a uniform full-screen experience */
+#unity-container.unity-desktop,
+#unity-container.unity-mobile {
+    transform: none;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+}
+
+/* If you'd like, you can remove this entirely:
+.unity-mobile #unity-canvas {
+    width: 100%;
+    height: 100%;
+}
+*/
