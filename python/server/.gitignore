@@ -1,0 +1,71 @@
+# This .gitignore file should be placed at the root of your Unity project
+
+# ===============
+# Python
+# ===============
+/venv/
+/.venv/
+
+# ===============
+# Unity generated
+# ===============
+/Library/
+/Temp/
+/Logs/
+/Obj/
+/Build/
+/Builds/
+/UserSettings/
+*.csproj
+*.unityproj
+*.sln
+*.asmdef
+*.vsconfig
+*.user
+*.userprefs
+*.pidb
+*.suo
+*.vcs
+*.unityproj
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.ide
+*.sln.docstates
+*.apk
+*.aab
+*.keystore
+*.plist
+*.pidb.meta
+
+# =======================================
+# Visual Studio / MonoDevelop generated
+# =======================================
+ExportedObj/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+
+# =======================================
+# OS generated
+# =======================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+*.swp
+*~
+Thumbs.db
