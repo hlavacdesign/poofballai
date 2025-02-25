@@ -10,7 +10,18 @@ public class VideoSourceController : MonoBehaviour
     public List<string> videoURLs = new List<string>() {
         "https://res.cloudinary.com/hlavacdesign/video/upload/v1740510178/349456376320421895_dessns.mp4",
         "https://res.cloudinary.com/hlavacdesign/video/upload/v1740510176/349454633436110849_yaw86g.mp4",
-        "https://res.cloudinary.com/hlavacdesign/video/upload/v1740509836/349454558903336963_rfiz6o.mp4"
+        "https://res.cloudinary.com/hlavacdesign/video/upload/v1740509836/349454558903336963_rfiz6o.mp4",
+        "https://res.cloudinary.com/hlavacdesign/video/upload/v1740519601/349456382641225736_djytvn.mp4",
+        "https://res.cloudinary.com/hlavacdesign/video/upload/v1740519601/349457032326352899_dopwhx.mp4",
+        "https://res.cloudinary.com/hlavacdesign/video/upload/v1740519601/349458449933975560_vi14s5.mp4",
+        "https://res.cloudinary.com/hlavacdesign/video/upload/v1740519601/349458481710026755_uexiif.mp4",
+        "https://res.cloudinary.com/hlavacdesign/video/upload/v1740519602/349456798409986056_rn71by.mp4",
+        "https://res.cloudinary.com/hlavacdesign/video/upload/v1740519603/349458481710026756_bqppt9.mp4",
+        "https://res.cloudinary.com/hlavacdesign/video/upload/v1740519603/349458481710026757_zxfngj.mp4",
+        "https://res.cloudinary.com/hlavacdesign/video/upload/v1740519603/349460539519451143_ca4ona.mp4",
+        "https://res.cloudinary.com/hlavacdesign/video/upload/v1740519603/349458481710026758_zm2ga5.mp4",
+        "https://res.cloudinary.com/hlavacdesign/video/upload/v1740519603/349460591994392581_dmhe6i.mp4",
+        "https://res.cloudinary.com/hlavacdesign/video/upload/v1740519605/349460622650560519_awcvaq.mp4"
     };
 
     [Header("Cross-Fade Settings")]
