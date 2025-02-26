@@ -345,7 +345,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 97510959}
   m_HandleRect: {fileID: 97510958}
   m_Direction: 3
-  m_Value: -0.0000005621733
+  m_Value: 0
   m_Size: 0.88050455
   m_NumberOfSteps: 0
   m_OnValueChanged:
@@ -411,7 +411,7 @@ PrefabInstance:
 
 
 
-        Version 0.03'
+        Version 0.04'
       objectReference: {fileID: 0}
     - target: {fileID: 6777796593639966480, guid: 2e9469fffc21c44de8bfab2b0774fecc, type: 3}
       propertyPath: m_fontStyle
