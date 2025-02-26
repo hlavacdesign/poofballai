@@ -119,7 +119,7 @@ public class VideoSourceController : MonoBehaviour
             yield return null;
 
         vp.Play();
-        Debug.Log($"[PlayVideoRoutine] {vp.name} is now playing. length={vp.length}");
+        // Debug.Log($"[PlayVideoRoutine] {vp.name} is now playing. length={vp.length}");
 
         if (isFirst)
         {
@@ -199,7 +199,7 @@ public class VideoSourceController : MonoBehaviour
     /// </summary>
     private IEnumerator PlayVideoOnNextPlayer(VideoPlayer nextPlayer, string url)
     {
-        Debug.Log($"[PlayVideoOnNextPlayer] Setting {nextPlayer.name} to {url}");
+        // Debug.Log($"[PlayVideoOnNextPlayer] Setting {nextPlayer.name} to {url}");
         nextPlayer.url = url;
         nextPlayer.Prepare();
 
@@ -208,7 +208,7 @@ public class VideoSourceController : MonoBehaviour
             yield return null;
 
         nextPlayer.Play();
-        Debug.Log($"[PlayVideoOnNextPlayer] {nextPlayer.name} is now playing. length={nextPlayer.length}");
+        // Debug.Log($"[PlayVideoOnNextPlayer] {nextPlayer.name} is now playing. length={nextPlayer.length}");
     }
 
     /// <summary>
