@@ -1,0 +1,12 @@
+# Force gzip content-encoding for Unity WebGL build files
+/Build/poofball-BUILD.data.gz
+  Content-Type: application/octet-stream
+  Content-Encoding: gzip
+
+/Build/poofball-BUILD.framework.js.gz
+  Content-Type: application/javascript
+  Content-Encoding: gzip
+
+/Build/poofball-BUILD.wasm.gz
+  Content-Type: application/wasm
+  Content-Encoding: gzip
