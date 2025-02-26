@@ -1,9 +1,9 @@
 const cacheName = "DefaultCompany-poofball-0.1";
 const contentToCache = [
-    "Build/poofball-BUILD.loader.js",
-    "Build/poofball-BUILD.framework.js.gz",
-    "Build/poofball-BUILD.data.gz",
-    "Build/poofball-BUILD.wasm.gz",
+    "Build/poofball-BUILD2.loader.js",
+    "Build/poofball-BUILD2.framework.js.gz",
+    "Build/poofball-BUILD2.data.gz",
+    "Build/poofball-BUILD2.wasm.gz",
     "TemplateData/style.css"
 
 ];

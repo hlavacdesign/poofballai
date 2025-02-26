@@ -149,7 +149,7 @@ public class BottomToTopLayoutGroup : LayoutGroup
     // If autoScroll is enabled, scroll to bottom after layout is done.
     private void LateUpdate()
     {
-        if (autoScrollToBottom && scrollRect != null)
+        if (layoutDirty && autoScrollToBottom && scrollRect != null)
         {
             // 0 in a standard vertical ScrollRect is bottom; 1 is top
             scrollRect.normalizedPosition = new Vector2(0, 0);
