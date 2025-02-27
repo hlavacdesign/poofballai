@@ -507,7 +507,7 @@ MonoBehaviour:
   m_OnTouchScreenKeyboardStatusChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_CaretColor: {r: 0.51314044, g: 1, b: 0, a: 1}
+  m_CaretColor: {r: 0, g: 1, b: 0.72156864, a: 1}
   m_CustomCaretColor: 1
   m_SelectionColor: {r: 0, g: 0, b: 0, a: 0.50980395}
   m_Text: 
