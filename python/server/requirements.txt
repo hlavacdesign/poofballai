@@ -4,5 +4,5 @@ gunicorn
 langchain
 langchain-community
 openai
-pinecone-client
+pinecone
 requests
