@@ -26,7 +26,17 @@ from pinecone import Pinecone
 from langchain_community.chat_models import ChatOpenAI
 from langchain.schema import HumanMessage
 
+# ------------------------------
+# CORS IMPORT AND SETUP (ADDED)
+# ------------------------------
+from flask_cors import CORS
+
 app = Flask(__name__)
+
+# You can limit allowed origins if needed:
+# CORS(app, resources={r"/*": {"origins": ["https://hlavac.ai"]}})
+# For now, this will allow all origins:
+CORS(app)
 
 # --------------------------------------------------
 # 1) Pinecone Setup
