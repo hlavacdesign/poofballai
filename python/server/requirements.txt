@@ -1,4 +1,8 @@
 flask
 flask-cors
-openai
 gunicorn
+langchain
+langchain-community
+openai
+pinecone-client
+requests

@@ -3,6 +3,26 @@ using UnityEngine.UI;
 using TMPro;
 using UnityEngine.Networking;
 using System.Collections;
+using System.Collections.Generic;
+using System;
+
+/// <summary>
+/// Data model for the server's JSON response:
+/// {
+///   "long_response": "...",
+///   "short_response": "...",
+///   "audio_url": "...",
+///   "media_urls": ["...", ...]
+/// }
+/// </summary>
+[Serializable]
+public class AgentResponse
+{
+    public string long_response;
+    public string short_response;
+    public string audio_url;
+    public List<string> media_urls;
+}
 
 public class TerminalChatUI : MonoBehaviour
 {
@@ -19,15 +39,31 @@ public class TerminalChatUI : MonoBehaviour
     [Tooltip("Optional ScrollRect to keep chat scrolled to bottom.")]
     public ScrollRect scrollRect;
 
-    [Header("Backend")]
-    [Tooltip("Endpoint for the LLM POST request.")]
-    public string backendUrl = "https://poofballai.onrender.com/chat";
+    [Header("Backend URLs")]
+    [Tooltip("If true, use the local server. If false, use the hosted server URL.")]
+    public bool useLocalServer = true;
+
+    [Tooltip("Local development server endpoint.")]
+    public string localBackendUrl = "http://127.0.0.1:5000/chat";
+
+    [Tooltip("Hosted/production server endpoint.")]
+    public string hostedBackendUrl = "https://poofballai.onrender.com/chat";
+
+    [Header("Audio")]
+    [Tooltip("AudioSource used to play TTS mp3 files.")]
+    public AudioSource audioSource;
+
+    // Internal store of whichever URL we decide to use:
+    private string activeBackendUrl;
 
     // Reference to the TMP_InputField from the currently active input box
     private TMP_InputField currentInputField;
 
     void Start()
     {
+        // Decide which backend URL to use:
+        activeBackendUrl = useLocalServer ? localBackendUrl : hostedBackendUrl;
+
         // On scene start, create the first input box
         CreateNewInputBox();
     }
@@ -92,7 +128,7 @@ public class TerminalChatUI : MonoBehaviour
     private IEnumerator SendRequestToLLM(string userMessage)
     {
         string jsonData = "{\"message\": \"" + userMessage.Replace("\"", "\\\"") + "\"}";
-        using (UnityWebRequest www = new UnityWebRequest(backendUrl, "POST"))
+        using (UnityWebRequest www = new UnityWebRequest(activeBackendUrl, "POST"))
         {
             byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonData);
             www.uploadHandler = new UploadHandlerRaw(bodyRaw);
@@ -103,12 +139,31 @@ public class TerminalChatUI : MonoBehaviour
 
             if (www.result == UnityWebRequest.Result.Success)
             {
-                // Parse JSON
+                // "result" is the JSON from the server
                 string result = www.downloadHandler.text;
-                string reply = ParseReplyFromJson(result);
 
-                // Create an output box for the LLM reply
-                CreateOutputBox(reply);
+                // Parse JSON into AgentResponse object
+                AgentResponse agentResponse = null;
+                try
+                {
+                    agentResponse = JsonUtility.FromJson<AgentResponse>(result);
+                }
+                catch
+                {
+                    CreateOutputBox("Received invalid JSON:\n" + result);
+                }
+
+                if (agentResponse != null)
+                {
+                    // Create an output box for the LLM's long_response
+                    CreateOutputBox(agentResponse.long_response);
+
+                    // If there's audio_url, download & play
+                    if (!string.IsNullOrEmpty(agentResponse.audio_url))
+                    {
+                        StartCoroutine(DownloadAndPlayAudio(agentResponse.audio_url));
+                    }
+                }
             }
             else
             {
@@ -119,6 +174,31 @@ public class TerminalChatUI : MonoBehaviour
 
         // Then, spawn a new input box
         CreateNewInputBox();
+    }
+
+    /// <summary>
+    /// Downloads an MP3 from audioUrl and plays it via the assigned AudioSource.
+    /// </summary>
+    private IEnumerator DownloadAndPlayAudio(string audioUrl)
+    {
+        using (UnityWebRequest www = UnityWebRequestMultimedia.GetAudioClip(audioUrl, AudioType.MPEG))
+        {
+            yield return www.SendWebRequest();
+
+            if (www.result == UnityWebRequest.Result.Success)
+            {
+                AudioClip clip = DownloadHandlerAudioClip.GetContent(www);
+                if (clip != null && audioSource != null)
+                {
+                    audioSource.clip = clip;
+                    audioSource.Play();
+                }
+            }
+            else
+            {
+                CreateOutputBox("Audio download error: " + www.error);
+            }
+        }
     }
 
     /// <summary>
@@ -137,34 +217,21 @@ public class TerminalChatUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Parses JSON like {"reply":"Hello!"}.
-    /// Adjust for your actual JSON structure if needed.
-    /// </summary>
-    private string ParseReplyFromJson(string json)
-    {
-        int startIdx = json.IndexOf(":") + 1;
-        int endIdx = json.LastIndexOf("}");
-        if (startIdx < 0 || endIdx < 0 || endIdx <= startIdx) return json;
-        return json.Substring(startIdx, endIdx - startIdx).Trim().Trim('"');
-    }
-
-    /// <summary>
-    /// 1) Immediately forces a layout rebuild
-    /// 2) Scrolls to bottom in the same frame
+    /// Immediately forces a layout rebuild and scrolls to bottom in the same frame.
     /// </summary>
     private void ScrollToBottomNow()
     {
         if (scrollRect != null && scrollRect.content != null)
         {
             LayoutRebuilder.ForceRebuildLayoutImmediate(scrollRect.content);
-            // In a vertical ScrollRect, (0,0) is the bottom
-            scrollRect.normalizedPosition = new Vector2(0, 1);
+            // Some setups might require (0,1) for top or (0,0) for bottom, depending on your UI arrangement
+            scrollRect.normalizedPosition = new Vector2(0, 0);
         }
     }
 
     /// <summary>
     /// Waits one frame, then again forces a rebuild & scroll to bottom.
-    /// This handles any late UI changes not caught by the immediate rebuild.
+    /// This helps handle any late UI changes not caught by the immediate rebuild.
     /// </summary>
     private IEnumerator ScrollToBottomNextFrame()
     {
@@ -173,7 +240,7 @@ public class TerminalChatUI : MonoBehaviour
         if (scrollRect != null && scrollRect.content != null)
         {
             LayoutRebuilder.ForceRebuildLayoutImmediate(scrollRect.content);
-            scrollRect.normalizedPosition = new Vector2(0, 1);
+            scrollRect.normalizedPosition = new Vector2(0, 0);
         }
     }
 }
