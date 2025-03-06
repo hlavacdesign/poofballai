@@ -27,6 +27,23 @@ from langchain_community.chat_models import ChatOpenAI
 from langchain.schema import HumanMessage
 
 # ------------------------------
+# SETUP API KEYS
+# ------------------------------
+import os
+from dotenv import load_dotenv
+
+# Load .env variables if they exist
+load_dotenv()
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
+ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
+
+# print(f"OPENAI_API_KEY: {OPENAI_API_KEY}")
+# print(f"PINECONE_API_KEY: {PINECONE_API_KEY}")
+# print(f"ELEVENLABS_API_KEY: {ELEVENLABS_API_KEY}")
+
+# ------------------------------
 # CORS IMPORT AND SETUP (ADDED)
 # ------------------------------
 from flask_cors import CORS
@@ -41,7 +58,6 @@ CORS(app)
 # --------------------------------------------------
 # 1) Pinecone Setup
 # --------------------------------------------------
-PINECONE_API_KEY = "pcsk_6n3CqF_H9vSZw7Aj8dx4LuP9WWQtMHmLg98fsVMmrt7hn4g2RVP986bMe3Grge5A78peak"
 INDEX_NAME = "versionone"
 NAMESPACE = "ns1"
 
@@ -52,7 +68,7 @@ index = pc.Index(INDEX_NAME)
 # 2) ChatOpenAI LLM
 # --------------------------------------------------
 llm = ChatOpenAI(
-    openai_api_key="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",
+    openai_api_key=OPENAI_API_KEY,
     model_name="gpt-4o-mini",
     temperature=0.7
 )
@@ -60,8 +76,7 @@ llm = ChatOpenAI(
 # --------------------------------------------------
 # 3) ElevenLabs config
 # --------------------------------------------------
-ELEVENLABS_API_KEY = "sk_bdc3d00fa88a8ab075c719e33e44340e4cd61815df51b964"
-ELEVENLABS_VOICE_ID = "Ib4kDyWcM5DppIOQH52e"  # e.g. "TxGEqnHWrfWFTfG4MY9R"
+ELEVENLABS_VOICE_ID = "Ib4kDyWcM5DppIOQH52e"
 
 def generate_elevenlabs_tts(text_to_speak):
     """Send text to ElevenLabs API, return raw audio bytes (mp3)."""

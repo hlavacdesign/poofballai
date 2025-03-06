@@ -5,6 +5,7 @@
 # ===============
 /venv/
 /.venv/
+.env
 
 # ===============
 # Unity generated
