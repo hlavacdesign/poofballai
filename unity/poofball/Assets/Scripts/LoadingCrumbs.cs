@@ -40,6 +40,7 @@ public class LoadingCrumbs : MonoBehaviour
         {
             StopCoroutine(crumbCoroutine);
             crumbCoroutine = null;
+            crumbText.text += "please ckick anywhere";
         }
     }
 
