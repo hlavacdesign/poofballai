@@ -35,6 +35,7 @@ public class TerminalChatUI : MonoBehaviour
 
     [Tooltip("Prefab that has a TMP_Text (for showing messages).")]
     public GameObject outputBoxPrefab;
+    public GameObject outputBoxWithCaratPrefab;
 
     [Tooltip("Optional ScrollRect to keep chat scrolled to bottom.")]
     public ScrollRect scrollRect;
@@ -115,7 +116,7 @@ public class TerminalChatUI : MonoBehaviour
         }
 
         // Display the user's text in an output box
-        CreateOutputBox(userInput);
+        CreateOutputBoxWithCarat(userInput);
 
         // Send to LLM
         StartCoroutine(SendRequestToLLM(userInput));
@@ -156,7 +157,7 @@ public class TerminalChatUI : MonoBehaviour
                 if (agentResponse != null)
                 {
                     // Create an output box for the LLM's long_response
-                    CreateOutputBox(agentResponse.long_response);
+                    CreateOutputBox(agentResponse.short_response);
 
                     // If there's audio_url, download & play
                     if (!string.IsNullOrEmpty(agentResponse.audio_url))
@@ -208,6 +209,17 @@ public class TerminalChatUI : MonoBehaviour
     private void CreateOutputBox(string text)
     {
         GameObject outputObj = Instantiate(outputBoxPrefab, contentTransform);
+        TMP_Text textComp = outputObj.GetComponentInChildren<TMP_Text>();
+        textComp.text = text;
+
+        // Immediately & next frame re-scroll
+        ScrollToBottomNow();
+        StartCoroutine(ScrollToBottomNextFrame());
+    }
+
+    private void CreateOutputBoxWithCarat(string text)
+    {
+        GameObject outputObj = Instantiate(outputBoxWithCaratPrefab, contentTransform);
         TMP_Text textComp = outputObj.GetComponentInChildren<TMP_Text>();
         textComp.text = text;
 

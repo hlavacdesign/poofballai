@@ -798,6 +798,7 @@ MonoBehaviour:
   contentTransform: {fileID: 1284310025}
   inputBoxPrefab: {fileID: 6097609801983723736, guid: 13fc76d79a41a4d6b985175d7244ba1a, type: 3}
   outputBoxPrefab: {fileID: 8687830648213404354, guid: 2e9469fffc21c44de8bfab2b0774fecc, type: 3}
+  outputBoxWithCaratPrefab: {fileID: 8687830648213404354, guid: e98b552de42aa46f89c90cb0035b3152, type: 3}
   scrollRect: {fileID: 341008872}
   useLocalServer: 0
   localBackendUrl: http://127.0.0.1:5000/chat
@@ -1112,7 +1113,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 6777796593639966480, guid: 2e9469fffc21c44de8bfab2b0774fecc, type: 3}
       propertyPath: m_text
-      value: 0.06
+      value: .07
       objectReference: {fileID: 0}
     - target: {fileID: 6777796593639966480, guid: 2e9469fffc21c44de8bfab2b0774fecc, type: 3}
       propertyPath: m_fontStyle
