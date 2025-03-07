@@ -128,10 +128,7 @@ public class TerminalChatUI : MonoBehaviour
 
             if (www.result == UnityWebRequest.Result.Success)
             {
-                // stop the loading crumbs
-                if( crumbs != null ) {
-                crumbs.StopCrumbs();
-                }   
+                stopCrumbs();
 
                 // "result" is the JSON from the server
                 string result = www.downloadHandler.text;
@@ -170,6 +167,8 @@ public class TerminalChatUI : MonoBehaviour
             }
             else
             {
+                stopCrumbs();
+
                 // Show error
                 RemoveLastLine(); 
                 CreateOutputBox("Error: " + www.error);
@@ -253,6 +252,8 @@ public class TerminalChatUI : MonoBehaviour
         using (UnityWebRequest www = UnityWebRequestMultimedia.GetAudioClip(audioUrl, AudioType.MPEG))
         {
             yield return www.SendWebRequest();
+
+            stopCrumbs();
 
             if (www.result == UnityWebRequest.Result.Success)
             {
@@ -348,6 +349,8 @@ public class TerminalChatUI : MonoBehaviour
     {
         if (contentTransform.childCount == 0) return;
 
+        stopCrumbs();
+
         Transform lastChild = contentTransform.GetChild(contentTransform.childCount - 1);
         TMP_Text textComp = lastChild.GetComponentInChildren<TMP_Text>();
         if (textComp != null)
@@ -356,6 +359,15 @@ public class TerminalChatUI : MonoBehaviour
         }
         ScrollToBottomNow();
     }
+
+    private void stopCrumbs() {
+
+        // stop the loading crumbs
+        if( crumbs != null ) {
+            crumbs.StopCrumbs();
+        }   
+    }
+
 
     /// <summary>
     /// Immediately forces a layout rebuild and scrolls to bottom in the same frame.
