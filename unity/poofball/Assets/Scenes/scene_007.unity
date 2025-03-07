@@ -701,6 +701,7 @@ GameObject:
   - component: {fileID: 608975017}
   - component: {fileID: 608975016}
   - component: {fileID: 608975020}
+  - component: {fileID: 608975021}
   m_Layer: 5
   m_Name: Canvas
   m_TagString: Untagged
@@ -812,6 +813,22 @@ MonoBehaviour:
   localBackendUrl: http://127.0.0.1:5000/chat
   hostedBackendUrl: https://poofballai.onrender.com/chat
   audioSource: {fileID: 963194230}
+--- !u!114 &608975021
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 608975015}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 21b5fae1042ac494b85d71010223d680, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  minChunkSize: 2
+  maxChunkSize: 4
+  minChunkDelay: 0.01
+  maxChunkDelay: 0.2
 --- !u!1 &705507993
 GameObject:
   m_ObjectHideFlags: 0
@@ -1121,7 +1138,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 6777796593639966480, guid: 2e9469fffc21c44de8bfab2b0774fecc, type: 3}
       propertyPath: m_text
-      value: .07
+      value: .071
       objectReference: {fileID: 0}
     - target: {fileID: 6777796593639966480, guid: 2e9469fffc21c44de8bfab2b0774fecc, type: 3}
       propertyPath: m_fontStyle

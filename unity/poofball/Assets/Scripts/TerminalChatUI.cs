@@ -60,10 +60,20 @@ public class TerminalChatUI : MonoBehaviour
     // Reference to the TMP_InputField from the currently active input box
     private TMP_InputField currentInputField;
 
+    // NEW: We'll add a reference to TyperSequential to handle streaming text
+    private TyperSequential typer;
+
     void Start()
     {
         // Decide which backend URL to use:
         activeBackendUrl = useLocalServer ? localBackendUrl : hostedBackendUrl;
+
+        // If there's no TyperSequential attached, add it
+        typer = GetComponent<TyperSequential>();
+        if (typer == null)
+        {
+            typer = gameObject.AddComponent<TyperSequential>();
+        }
 
         // On scene start, create the first input box
         CreateNewInputBox();
@@ -85,7 +95,7 @@ public class TerminalChatUI : MonoBehaviour
         currentInputField.Select();
         currentInputField.ActivateInputField();
 
-        // Scroll to bottom immediately & next frame
+        // Scroll to bottom immediately
         ScrollToBottomNow();
     }
 
@@ -103,7 +113,7 @@ public class TerminalChatUI : MonoBehaviour
         // Destroy just the input box object
         Destroy(currentInputField.gameObject);
 
-        // Immediately & next frame re-scroll
+        // Re-scroll
         ScrollToBottomNow();
 
         // If user typed nothing, just create a new input
@@ -115,6 +125,9 @@ public class TerminalChatUI : MonoBehaviour
 
         // Display the user's text in an output box
         CreateOutputBoxWithCarat(userInput);
+
+        // Optionally create a blank line
+        CreateNewLine();
 
         // Send to LLM
         StartCoroutine(SendRequestToLLM(userInput));
@@ -154,8 +167,11 @@ public class TerminalChatUI : MonoBehaviour
 
                 if (agentResponse != null)
                 {
-                    // Create an output box for the LLM's long_response
-                    CreateOutputBox(agentResponse.short_response);
+                    // Right before printing the message, remove last line if it's blank
+                    RemoveLastLine();
+
+                    // *** Instead of CreateOutputBox, we do a streaming approach: ***
+                    yield return StartCoroutine(CreateStreamingOutputBox(agentResponse.short_response));
 
                     // If there's audio_url, download & play
                     if (!string.IsNullOrEmpty(agentResponse.audio_url))
@@ -167,12 +183,30 @@ public class TerminalChatUI : MonoBehaviour
             else
             {
                 // Show error
+                RemoveLastLine(); 
                 CreateOutputBox("Error: " + www.error);
             }
         }
 
         // Then, spawn a new input box
         CreateNewInputBox();
+    }
+
+    /// <summary>
+    /// NEW: Creates an output box and types the text in a streaming style.
+    /// </summary>
+    private IEnumerator CreateStreamingOutputBox(string fullText)
+    {
+        // 1) Instantiate the same prefab as normal
+        GameObject outputObj = Instantiate(outputBoxPrefab, contentTransform);
+        TMP_Text textComp = outputObj.GetComponentInChildren<TMP_Text>();
+
+        // 2) Start typed animation from TyperSequential
+        yield return StartCoroutine(typer.TypeTextCoroutine(textComp, fullText, () =>
+        {
+            // Called once fully typed, we can scroll
+            ScrollToBottomNow();
+        }));
     }
 
     /// <summary>
@@ -195,6 +229,7 @@ public class TerminalChatUI : MonoBehaviour
             }
             else
             {
+                RemoveLastLine();
                 CreateOutputBox("Audio download error: " + www.error);
             }
         }
@@ -210,7 +245,6 @@ public class TerminalChatUI : MonoBehaviour
         TMP_Text textComp = outputObj.GetComponentInChildren<TMP_Text>();
         textComp.text = text;
 
-        // Immediately & next frame re-scroll
         ScrollToBottomNow();
     }
 
@@ -220,7 +254,36 @@ public class TerminalChatUI : MonoBehaviour
         TMP_Text textComp = outputObj.GetComponentInChildren<TMP_Text>();
         textComp.text = text;
 
-        // Immediately & next frame re-scroll
+        ScrollToBottomNow();
+    }
+
+    /// <summary>
+    /// Creates a purely blank line under the content. 
+    /// (Call this wherever you want a line break.)
+    /// </summary>
+    private void CreateNewLine()
+    {
+        GameObject lineObj = Instantiate(outputBoxPrefab, contentTransform);
+        TMP_Text textComp = lineObj.GetComponentInChildren<TMP_Text>();
+        textComp.text = "\n";
+
+        ScrollToBottomNow();
+    }
+
+    /// <summary>
+    /// Removes the last line if it's blank (i.e., an empty outputBox).
+    /// We do this before printing the LLM’s message to remove an extra blank line.
+    /// </summary>
+    private void RemoveLastLine()
+    {
+        if (contentTransform.childCount == 0) return;
+
+        Transform lastChild = contentTransform.GetChild(contentTransform.childCount - 1);
+        TMP_Text textComp = lastChild.GetComponentInChildren<TMP_Text>();
+        if (textComp != null)
+        {
+            Destroy(lastChild.gameObject);
+        }
         ScrollToBottomNow();
     }
 
@@ -232,7 +295,7 @@ public class TerminalChatUI : MonoBehaviour
         if (scrollRect != null && scrollRect.content != null)
         {
             LayoutRebuilder.ForceRebuildLayoutImmediate(scrollRect.content);
-            // Some setups might require (0,1) for top or (0,0) for bottom, depending on your UI arrangement
+            // Some setups might require (0,1) for top or (0,0) for bottom
             scrollRect.normalizedPosition = new Vector2(0, 0);
         }
     }
