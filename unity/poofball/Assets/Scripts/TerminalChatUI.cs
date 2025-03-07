@@ -87,7 +87,6 @@ public class TerminalChatUI : MonoBehaviour
 
         // Scroll to bottom immediately & next frame
         ScrollToBottomNow();
-        StartCoroutine(ScrollToBottomNextFrame());
     }
 
     /// <summary>
@@ -106,7 +105,6 @@ public class TerminalChatUI : MonoBehaviour
 
         // Immediately & next frame re-scroll
         ScrollToBottomNow();
-        StartCoroutine(ScrollToBottomNextFrame());
 
         // If user typed nothing, just create a new input
         if (string.IsNullOrWhiteSpace(userInput))
@@ -214,7 +212,6 @@ public class TerminalChatUI : MonoBehaviour
 
         // Immediately & next frame re-scroll
         ScrollToBottomNow();
-        StartCoroutine(ScrollToBottomNextFrame());
     }
 
     private void CreateOutputBoxWithCarat(string text)
@@ -225,7 +222,6 @@ public class TerminalChatUI : MonoBehaviour
 
         // Immediately & next frame re-scroll
         ScrollToBottomNow();
-        StartCoroutine(ScrollToBottomNextFrame());
     }
 
     /// <summary>
@@ -237,21 +233,6 @@ public class TerminalChatUI : MonoBehaviour
         {
             LayoutRebuilder.ForceRebuildLayoutImmediate(scrollRect.content);
             // Some setups might require (0,1) for top or (0,0) for bottom, depending on your UI arrangement
-            scrollRect.normalizedPosition = new Vector2(0, 0);
-        }
-    }
-
-    /// <summary>
-    /// Waits one frame, then again forces a rebuild & scroll to bottom.
-    /// This helps handle any late UI changes not caught by the immediate rebuild.
-    /// </summary>
-    private IEnumerator ScrollToBottomNextFrame()
-    {
-        yield return null;
-
-        if (scrollRect != null && scrollRect.content != null)
-        {
-            LayoutRebuilder.ForceRebuildLayoutImmediate(scrollRect.content);
             scrollRect.normalizedPosition = new Vector2(0, 0);
         }
     }
