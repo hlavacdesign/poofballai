@@ -642,10 +642,7 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 8687830648213404354, guid: 2e9469fffc21c44de8bfab2b0774fecc, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1680357558}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 2e9469fffc21c44de8bfab2b0774fecc, type: 3}
 --- !u!224 &952456008 stripped
 RectTransform:
@@ -1005,11 +1002,11 @@ RectTransform:
   - {fileID: 952456008}
   m_Father: {fileID: 608975019}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 280, y: 1126.02}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: 23.01001}
   m_SizeDelta: {x: 2000, y: 0}
-  m_Pivot: {x: 0, y: 1}
+  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1284310026
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1045,36 +1042,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_HorizontalFit: 0
   m_VerticalFit: 2
---- !u!1 &1680357553 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 8687830648213404354, guid: 2e9469fffc21c44de8bfab2b0774fecc, type: 3}
-  m_PrefabInstance: {fileID: 952456007}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &1680357555 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 6777796593639966480, guid: 2e9469fffc21c44de8bfab2b0774fecc, type: 3}
-  m_PrefabInstance: {fileID: 952456007}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1680357553}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
---- !u!114 &1680357558
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1680357553}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 18ce7317aebc245d298f11663b4816ac, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  crumbText: {fileID: 1680357555}
-  speed: 2
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
