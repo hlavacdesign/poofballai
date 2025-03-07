@@ -54,6 +54,10 @@ public class TerminalChatUI : MonoBehaviour
     [Tooltip("AudioSource used to play TTS mp3 files.")]
     public AudioSource audioSource;
 
+    [Header("Camera Animation")]
+    [Tooltip("Reference to the CameraFOVAnimator for the dramatic reveal.")]
+    public CameraFOVAnimator cameraFOV;
+
     // Internal store of whichever URL we decide to use:
     private string activeBackendUrl;
 
@@ -62,6 +66,10 @@ public class TerminalChatUI : MonoBehaviour
 
     // We'll add a reference to TyperSequential to handle streaming text
     private TyperSequential typer;
+
+    private bool firstTime = true;
+
+    public LoadingCrumbs crumbs;
 
     void Start()
     {
@@ -75,70 +83,38 @@ public class TerminalChatUI : MonoBehaviour
             typer = gameObject.AddComponent<TyperSequential>();
         }
 
-        // On scene start, create the first input box
+        // Instead of creating the input box immediately,
+        // do an opening sequence: "Hello" -> LLM -> typed response -> audio
+        StartCoroutine(OpeningSequence());
+    }
+
+    /// <summary>
+    /// The opening sequence:
+    /// 1) "Hello" from user (shown in UI)
+    /// 2) Send to LLM -> typed response
+    /// 3) If audio, play it & FlyIn() camera
+    /// 4) Once done, we show the user input box
+    /// </summary>
+    private IEnumerator OpeningSequence()
+    {
+        // // 1) Show user text "Hello"
+        // CreateOutputBoxWithCarat("Hello");
+
+        // // 2) Optionally add a blank line
+        // CreateNewLine();
+
+        // 3) Send "Hello" to LLM and wait for typed text + audio
+        yield return StartCoroutine(SendRequestToLLM("hello", skipCreateNewInput: true));
+
+        // 4) After the opening sequence is done, THEN allow user to input
         CreateNewInputBox();
     }
 
     /// <summary>
-    /// Spawns a new input box at the bottom for the user to type.
-    /// Then forcibly re-scrolls so it's visible.
+    /// Overload for SendRequestToLLM that can skip the "create new input" step
+    /// so we can do the opening sequence without showing the box early.
     /// </summary>
-    private void CreateNewInputBox()
-    {
-        GameObject inputObj = Instantiate(inputBoxPrefab, contentTransform);
-        currentInputField = inputObj.GetComponentInChildren<TMP_InputField>();
-
-        // Hook up Enter submission
-        currentInputField.onSubmit.AddListener(OnSubmitInput);
-
-        // Focus the field
-        currentInputField.Select();
-        currentInputField.ActivateInputField();
-
-        // Scroll to bottom
-        ScrollToBottomNow();
-    }
-
-    /// <summary>
-    /// Called when user hits Enter in the current input box.
-    /// 1) Remove that input box
-    /// 2) Scroll to bottom
-    /// 3) If user typed something, create an output box & send to LLM
-    /// 4) Otherwise, spawn a new input box
-    /// </summary>
-    private void OnSubmitInput(string userInput)
-    {
-        currentInputField.onSubmit.RemoveListener(OnSubmitInput);
-
-        // Destroy just the input box object
-        Destroy(currentInputField.gameObject);
-
-        // Re-scroll
-        ScrollToBottomNow();
-
-        // If user typed nothing, just create a new input
-        if (string.IsNullOrWhiteSpace(userInput))
-        {
-            CreateNewInputBox();
-            return;
-        }
-
-        // Display the user's text in an output box
-        CreateOutputBoxWithCarat(userInput);
-
-        // Optionally create a blank line
-        CreateNewLine();
-
-        // Send to LLM
-        StartCoroutine(SendRequestToLLM(userInput));
-    }
-
-    /// <summary>
-    /// Sends user message to LLM; once response arrives,
-    /// we type the text in parallel with audio fetch + playback.
-    /// We wait until BOTH are done, then allow new input.
-    /// </summary>
-    private IEnumerator SendRequestToLLM(string userMessage)
+    private IEnumerator SendRequestToLLM(string userMessage, bool skipCreateNewInput)
     {
         string jsonData = "{\"message\": \"" + userMessage.Replace("\"", "\\\"") + "\"}";
         using (UnityWebRequest www = new UnityWebRequest(activeBackendUrl, "POST"))
@@ -152,6 +128,11 @@ public class TerminalChatUI : MonoBehaviour
 
             if (www.result == UnityWebRequest.Result.Success)
             {
+                // stop the loading crumbs
+                if( crumbs != null ) {
+                crumbs.StopCrumbs();
+                }   
+
                 // "result" is the JSON from the server
                 string result = www.downloadHandler.text;
 
@@ -195,8 +176,54 @@ public class TerminalChatUI : MonoBehaviour
             }
         }
 
-        // Only AFTER text typed and audio done, spawn a new input box
-        CreateNewInputBox();
+        // Only AFTER text typed and audio done, optionally create input box
+        if (!skipCreateNewInput)
+        {
+            CreateNewInputBox();
+        }
+    }
+
+    /// <summary>
+    /// Original version, for normal usage (the user typed something).
+    /// This calls the new overload with skipCreateNewInput=false.
+    /// </summary>
+    private IEnumerator SendRequestToLLM(string userMessage)
+    {
+        yield return StartCoroutine(SendRequestToLLM(userMessage, skipCreateNewInput: false));
+    }
+
+    /// <summary>
+    /// Called when user hits Enter in the current input box.
+    /// 1) Remove that input box
+    /// 2) Scroll to bottom
+    /// 3) If user typed something, create an output box & send to LLM
+    /// 4) Otherwise, spawn a new input box
+    /// </summary>
+    private void OnSubmitInput(string userInput)
+    {
+        currentInputField.onSubmit.RemoveListener(OnSubmitInput);
+
+        // Destroy just the input box object
+        Destroy(currentInputField.gameObject);
+
+        // Re-scroll
+        ScrollToBottomNow();
+
+        // If user typed nothing, just create a new input
+        if (string.IsNullOrWhiteSpace(userInput))
+        {
+            CreateNewInputBox();
+            return;
+        }
+
+        // Display the user's text in an output box
+        CreateOutputBoxWithCarat(userInput);
+
+        // Optionally create a blank line
+        CreateNewLine();
+
+        // Send to LLM
+        StartCoroutine(SendRequestToLLM(userInput));
     }
 
     /// <summary>
@@ -218,7 +245,8 @@ public class TerminalChatUI : MonoBehaviour
 
     /// <summary>
     /// Downloads an MP3 from audioUrl and plays it via the assigned AudioSource.
-    /// Waits until the AudioSource finishes playing (if you want).
+    /// Once it starts playing, we call cameraFOV.FlyIn().
+    /// Waits until the AudioSource finishes playing.
     /// </summary>
     private IEnumerator DownloadAndPlayAudio(string audioUrl)
     {
@@ -231,10 +259,19 @@ public class TerminalChatUI : MonoBehaviour
                 AudioClip clip = DownloadHandlerAudioClip.GetContent(www);
                 if (clip != null && audioSource != null)
                 {
+                    // Assign the clip and play
                     audioSource.clip = clip;
                     audioSource.Play();
 
-                    // Optionally wait until it finishes playing
+                    // Kick off the camera FlyIn
+                    if (cameraFOV != null && firstTime == true )
+                    {
+                        cameraFOV.FlyIn( 1.0f );
+
+                        firstTime = false;
+                    }
+
+                    // Wait until it finishes playing
                     while (audioSource.isPlaying)
                     {
                         yield return null;
@@ -250,8 +287,27 @@ public class TerminalChatUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Create an output box with the given text,
-    /// then forcibly re-scroll.
+    /// Spawns a new input box at the bottom for the user to type.
+    /// Then forcibly re-scrolls so it's visible.
+    /// </summary>
+    private void CreateNewInputBox()
+    {
+        GameObject inputObj = Instantiate(inputBoxPrefab, contentTransform);
+        currentInputField = inputObj.GetComponentInChildren<TMP_InputField>();
+
+        // Hook up Enter submission
+        currentInputField.onSubmit.AddListener(OnSubmitInput);
+
+        // Focus the field
+        currentInputField.Select();
+        currentInputField.ActivateInputField();
+
+        // Scroll to bottom
+        ScrollToBottomNow();
+    }
+
+    /// <summary>
+    /// Create an output box with the given text, forcibly re-scroll.
     /// </summary>
     private void CreateOutputBox(string text)
     {
@@ -309,7 +365,6 @@ public class TerminalChatUI : MonoBehaviour
         if (scrollRect != null && scrollRect.content != null)
         {
             LayoutRebuilder.ForceRebuildLayoutImmediate(scrollRect.content);
-            // Some setups might require (0,1) for top or (0,0) for bottom
             scrollRect.normalizedPosition = new Vector2(0, 0);
         }
     }
