@@ -60,7 +60,7 @@ public class TerminalChatUI : MonoBehaviour
     // Reference to the TMP_InputField from the currently active input box
     private TMP_InputField currentInputField;
 
-    // NEW: We'll add a reference to TyperSequential to handle streaming text
+    // We'll add a reference to TyperSequential to handle streaming text
     private TyperSequential typer;
 
     void Start()
@@ -81,7 +81,7 @@ public class TerminalChatUI : MonoBehaviour
 
     /// <summary>
     /// Spawns a new input box at the bottom for the user to type.
-    /// Then forcibly re-scrolls (both now & next frame) so it's visible.
+    /// Then forcibly re-scrolls so it's visible.
     /// </summary>
     private void CreateNewInputBox()
     {
@@ -95,7 +95,7 @@ public class TerminalChatUI : MonoBehaviour
         currentInputField.Select();
         currentInputField.ActivateInputField();
 
-        // Scroll to bottom immediately
+        // Scroll to bottom
         ScrollToBottomNow();
     }
 
@@ -134,8 +134,9 @@ public class TerminalChatUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Sends user message to LLM; once response arrives, create an output box.
-    /// Then spawn a new input box. After each step, re-scroll.
+    /// Sends user message to LLM; once response arrives,
+    /// we type the text in parallel with audio fetch + playback.
+    /// We wait until BOTH are done, then allow new input.
     /// </summary>
     private IEnumerator SendRequestToLLM(string userMessage)
     {
@@ -167,17 +168,23 @@ public class TerminalChatUI : MonoBehaviour
 
                 if (agentResponse != null)
                 {
-                    // Right before printing the message, remove last line if it's blank
+                    // Remove last line if blank
                     RemoveLastLine();
 
-                    // *** Instead of CreateOutputBox, we do a streaming approach: ***
-                    yield return StartCoroutine(CreateStreamingOutputBox(agentResponse.short_response));
+                    // Start text typing
+                    Coroutine typingCoro = StartCoroutine(CreateStreamingOutputBox(agentResponse.short_response));
 
-                    // If there's audio_url, download & play
+                    // Start audio load + playback if there's an audio_url
+                    Coroutine audioCoro = null;
                     if (!string.IsNullOrEmpty(agentResponse.audio_url))
                     {
-                        StartCoroutine(DownloadAndPlayAudio(agentResponse.audio_url));
+                        audioCoro = StartCoroutine(DownloadAndPlayAudio(agentResponse.audio_url));
                     }
+
+                    // Now wait for BOTH to finish:
+                    yield return typingCoro;         // text typed
+                    if (audioCoro != null) 
+                        yield return audioCoro;      // audio done
                 }
             }
             else
@@ -188,29 +195,30 @@ public class TerminalChatUI : MonoBehaviour
             }
         }
 
-        // Then, spawn a new input box
+        // Only AFTER text typed and audio done, spawn a new input box
         CreateNewInputBox();
     }
 
     /// <summary>
-    /// NEW: Creates an output box and types the text in a streaming style.
+    /// Creates an output box and types the text in a streaming style.
     /// </summary>
     private IEnumerator CreateStreamingOutputBox(string fullText)
     {
-        // 1) Instantiate the same prefab as normal
+        // Instantiate the same prefab as normal
         GameObject outputObj = Instantiate(outputBoxPrefab, contentTransform);
         TMP_Text textComp = outputObj.GetComponentInChildren<TMP_Text>();
 
-        // 2) Start typed animation from TyperSequential
+        // Start typed animation from TyperSequential
         yield return StartCoroutine(typer.TypeTextCoroutine(textComp, fullText, () =>
         {
-            // Called once fully typed, we can scroll
+            // Once fully typed, we can scroll
             ScrollToBottomNow();
         }));
     }
 
     /// <summary>
     /// Downloads an MP3 from audioUrl and plays it via the assigned AudioSource.
+    /// Waits until the AudioSource finishes playing (if you want).
     /// </summary>
     private IEnumerator DownloadAndPlayAudio(string audioUrl)
     {
@@ -225,6 +233,12 @@ public class TerminalChatUI : MonoBehaviour
                 {
                     audioSource.clip = clip;
                     audioSource.Play();
+
+                    // Optionally wait until it finishes playing
+                    while (audioSource.isPlaying)
+                    {
+                        yield return null;
+                    }
                 }
             }
             else

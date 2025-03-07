@@ -1138,7 +1138,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 6777796593639966480, guid: 2e9469fffc21c44de8bfab2b0774fecc, type: 3}
       propertyPath: m_text
-      value: .071
+      value: .072
       objectReference: {fileID: 0}
     - target: {fileID: 6777796593639966480, guid: 2e9469fffc21c44de8bfab2b0774fecc, type: 3}
       propertyPath: m_fontStyle
