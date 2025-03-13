@@ -3,22 +3,25 @@
 # A Flask server that:
 #   1) Takes user input from a POST /chat endpoint
 #   2) Uses Pinecone for embedding + query (with an existing index/memory)
-#   3) Calls a chat-based LLM (via ChatOpenAI from langchain_community)
+#   3) Calls a chat-based LLM (via ChatOpenAI from langchain_community), using conversation history
 #   4) Returns structured JSON with keys: long_response, short_response, audio_url, media_urls
 #   5) Uses ElevenLabs to generate TTS from short_response
 #   6) Serves MP3 files at /audio/<filename>
 #
-# The logic is now split into multiple modules: memory.py, agent.py, voice.py
+# The LLM agent is in agent.py and now keeps a conversation thread:
+#   - user messages with "speaker": "user" (no URLs)
+#   - agent messages with "speaker": "agent" containing only "short_response"
 
 import os
 import uuid
 import json
+
 import flask
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from dotenv import load_dotenv
 
-# Import the refactored classes
+# Import your refactored modules
 from memory import Memory
 from agent import Agent
 from voice import Voice
@@ -36,7 +39,7 @@ ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 # Flask setup
 # ------------------------------
 app = Flask(__name__)
-CORS(app)  # Allow all origins or specify in production if needed
+CORS(app)  # Adjust for your domain(s) in production if needed
 
 # ------------------------------
 # Instantiate helper classes
@@ -44,12 +47,23 @@ CORS(app)  # Allow all origins or specify in production if needed
 INDEX_NAME = "versionone"
 NAMESPACE = "ns1"
 
-memory = Memory(PINECONE_API_KEY, INDEX_NAME, NAMESPACE)
-agent = Agent(openai_api_key=OPENAI_API_KEY, model_name="gpt-4o-mini", temperature=0.7)
-voice = Voice(elevenlabs_api_key=ELEVENLABS_API_KEY, voice_id="Ib4kDyWcM5DppIOQH52e")
+memory = Memory(
+    pinecone_api_key=PINECONE_API_KEY,
+    index_name=INDEX_NAME,
+    namespace=NAMESPACE
+)
+agent = Agent(
+    openai_api_key=OPENAI_API_KEY,
+    model_name="gpt-4o-mini",
+    temperature=0.7
+)
+voice = Voice(
+    elevenlabs_api_key=ELEVENLABS_API_KEY,
+    voice_id="Ib4kDyWcM5DppIOQH52e"
+)
 
 # --------------------------------------------------
-# 1) Flask route: /chat
+# Flask route: /chat
 # --------------------------------------------------
 @app.route("/chat", methods=["POST"])
 def chat():
@@ -63,7 +77,10 @@ def chat():
             "media_urls": []
         })
 
-    # 1a) Retrieve Pinecone context
+    # 1) Add user message to conversation (excluding URLs)
+    agent.add_user_message(user_message)
+
+    # 2) Use Pinecone to retrieve context
     results = memory.retrieve_context(user_message)
     if results is None:
         return jsonify({
@@ -89,13 +106,13 @@ def chat():
             snippet = md["text"][:80].replace("\n", " ")
             print(f"[DEBUG] Appending text from metadata: '{snippet}...'")
             context_str += md["text"] + "\n\n"
-        # If there are any URLs in the metadata, add them to the context
+        # If there are any URLs in the metadata, add them to context
         if "urls" in md:
             url_list_str = "\n".join(md["urls"])
             print(f"[DEBUG] Found {len(md['urls'])} URLs in metadata: {md['urls']}")
             context_str += f"Possible relevant URLs:\n{url_list_str}\n\n"
 
-    # 1b) Send to the LLM (Agent)
+    # 3) Construct and send the request to the LLM (with conversation history + context)
     raw_llm_output = agent.run(user_message, context_str)
     if not raw_llm_output:
         return jsonify({
@@ -105,14 +122,14 @@ def chat():
             "media_urls": []
         })
 
+    # Debug: Show LLM raw output
     print("[DEBUG] LLM raw output:")
     print(raw_llm_output)
 
-    # 1c) Parse the LLM JSON
+    # 4) Parse the LLM JSON result
     long_answer = ""
     short_answer = ""
     media_urls = []
-
     try:
         parsed = json.loads(raw_llm_output)
         long_answer = parsed.get("long_answer", "").strip()
@@ -129,7 +146,10 @@ def chat():
     if media_urls:
         print(f"[DEBUG] LLM returned these media URLs: {media_urls}")
 
-    # 1d) Generate TTS from short_answer
+    # 5) Add agent's short answer to the conversation
+    agent.add_agent_message(short_answer)
+
+    # 6) Generate TTS from short_answer
     audio_data = voice.generate_tts(short_answer)
     if not audio_data:
         audio_url = ""
@@ -141,7 +161,7 @@ def chat():
             f.write(audio_data)
         audio_url = request.host_url + "audio/" + filename
 
-    # 1e) Return combined JSON
+    # 7) Return the JSON response
     return jsonify({
         "long_response": long_answer,
         "short_response": short_answer,
@@ -150,15 +170,15 @@ def chat():
     })
 
 # --------------------------------------------------
-# 2) Serve audio files
+# Serve audio files
 # --------------------------------------------------
 @app.route("/audio/<path:filename>", methods=["GET"])
 def serve_audio(filename):
     return send_from_directory("audio_files", filename)
 
 # --------------------------------------------------
-# 3) Run the Flask server
+# Run the Flask server
 # --------------------------------------------------
 if __name__ == "__main__":
-    # For debugging purposes, set debug=True.
+    # For local debugging, set debug=True. Adjust host/port as needed.
     app.run(host="0.0.0.0", port=5000, debug=True)
