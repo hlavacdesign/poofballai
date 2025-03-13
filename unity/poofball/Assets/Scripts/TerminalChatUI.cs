@@ -9,8 +9,7 @@ using System;
 /// <summary>
 /// Data model for the server's JSON response:
 /// {
-///   "long_response": "...",
-///   "short_response": "...",
+///   "conversation_answer": "...",
 ///   "audio_url": "...",
 ///   "media_urls": ["...", ...]
 /// }
@@ -18,8 +17,7 @@ using System;
 [Serializable]
 public class AgentResponse
 {
-    public string long_response;
-    public string short_response;
+    public string conversation_answer;
     public string audio_url;
     public List<string> media_urls;
 }
@@ -84,29 +82,19 @@ public class TerminalChatUI : MonoBehaviour
         }
 
         // Instead of creating the input box immediately,
-        // do an opening sequence: "Hello" -> LLM -> typed response -> audio
+        // do an opening sequence: "hello" -> LLM -> typed response -> audio
         StartCoroutine(OpeningSequence());
     }
 
     /// <summary>
     /// The opening sequence:
-    /// 1) "Hello" from user (shown in UI)
-    /// 2) Send to LLM -> typed response
-    /// 3) If audio, play it & FlyIn() camera
-    /// 4) Once done, we show the user input box
+    /// 1) We call the server with "hello"
+    /// 2) Show typed response & audio
+    /// 3) Show input box once done
     /// </summary>
     private IEnumerator OpeningSequence()
     {
-        // // 1) Show user text "Hello"
-        // CreateOutputBoxWithCarat("Hello");
-
-        // // 2) Optionally add a blank line
-        // CreateNewLine();
-
-        // 3) Send "Hello" to LLM and wait for typed text + audio
         yield return StartCoroutine(SendRequestToLLM("hello", skipCreateNewInput: true));
-
-        // 4) After the opening sequence is done, THEN allow user to input
         CreateNewInputBox();
     }
 
@@ -149,8 +137,10 @@ public class TerminalChatUI : MonoBehaviour
                     // Remove last line if blank
                     RemoveLastLine();
 
-                    // Start text typing
-                    Coroutine typingCoro = StartCoroutine(CreateStreamingOutputBox(agentResponse.short_response));
+                    // Start text typing for conversation_answer
+                    Coroutine typingCoro = StartCoroutine(
+                        CreateStreamingOutputBox(agentResponse.conversation_answer)
+                    );
 
                     // Start audio load + playback if there's an audio_url
                     Coroutine audioCoro = null;
@@ -159,10 +149,10 @@ public class TerminalChatUI : MonoBehaviour
                         audioCoro = StartCoroutine(DownloadAndPlayAudio(agentResponse.audio_url));
                     }
 
-                    // Now wait for BOTH to finish:
-                    yield return typingCoro;         // text typed
-                    if (audioCoro != null) 
-                        yield return audioCoro;      // audio done
+                    // Wait for text typed AND audio done (if any)
+                    yield return typingCoro;
+                    if (audioCoro != null)
+                        yield return audioCoro;
                 }
             }
             else
@@ -170,7 +160,7 @@ public class TerminalChatUI : MonoBehaviour
                 stopCrumbs();
 
                 // Show error
-                RemoveLastLine(); 
+                RemoveLastLine();
                 CreateOutputBox("Error: " + www.error);
             }
         }
@@ -183,7 +173,7 @@ public class TerminalChatUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Original version, for normal usage (the user typed something).
+    /// Normal usage (the user typed something). 
     /// This calls the new overload with skipCreateNewInput=false.
     /// </summary>
     private IEnumerator SendRequestToLLM(string userMessage)
@@ -264,11 +254,10 @@ public class TerminalChatUI : MonoBehaviour
                     audioSource.clip = clip;
                     audioSource.Play();
 
-                    // Kick off the camera FlyIn
-                    if (cameraFOV != null && firstTime == true )
+                    // Kick off the camera FlyIn (only on the very first audio)
+                    if (cameraFOV != null && firstTime)
                     {
-                        cameraFOV.FlyIn( 1.0f );
-
+                        cameraFOV.FlyIn(1.0f);
                         firstTime = false;
                     }
 
@@ -360,14 +349,14 @@ public class TerminalChatUI : MonoBehaviour
         ScrollToBottomNow();
     }
 
-    private void stopCrumbs() {
-
+    private void stopCrumbs()
+    {
         // stop the loading crumbs
-        if( crumbs != null ) {
+        if (crumbs != null)
+        {
             crumbs.StopCrumbs();
-        }   
+        }
     }
-
 
     /// <summary>
     /// Immediately forces a layout rebuild and scrolls to bottom in the same frame.

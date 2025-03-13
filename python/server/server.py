@@ -4,13 +4,15 @@
 #   1) Takes user input from a POST /chat endpoint
 #   2) Uses Pinecone for embedding + query (with an existing index/memory)
 #   3) Calls a chat-based LLM (via ChatOpenAI from langchain_community), using conversation history
-#   4) Returns structured JSON with keys: long_response, short_response, audio_url, media_urls
-#   5) Uses ElevenLabs to generate TTS from short_response
+#   4) Returns a structured JSON with keys: conversation_answer, audio_url, media_urls
+#   5) Uses ElevenLabs to generate TTS from conversation_answer
 #   6) Serves MP3 files at /audio/<filename>
 #
-# The LLM agent is in agent.py and now keeps a conversation thread:
-#   - user messages with "speaker": "user" (no URLs)
-#   - agent messages with "speaker": "agent" containing only "short_response"
+# The LLM logic is in agent.py and we store conversation in memory:
+#   - user messages with "speaker": "user"
+#   - agent messages with "speaker": "agent" containing only "conversation_answer"
+#
+# Note that memory.py and voice.py remain the same.
 
 import os
 import uuid
@@ -71,8 +73,7 @@ def chat():
     user_message = data.get("message", "").strip()
     if not user_message:
         return jsonify({
-            "long_response": "No message received.",
-            "short_response": "",
+            "conversation_answer": "",
             "audio_url": "",
             "media_urls": []
         })
@@ -84,8 +85,7 @@ def chat():
     results = memory.retrieve_context(user_message)
     if results is None:
         return jsonify({
-            "long_response": "Error retrieving context from Pinecone.",
-            "short_response": "",
+            "conversation_answer": "Error retrieving context from Pinecone.",
             "audio_url": "",
             "media_urls": []
         })
@@ -106,7 +106,7 @@ def chat():
             snippet = md["text"][:80].replace("\n", " ")
             print(f"[DEBUG] Appending text from metadata: '{snippet}...'")
             context_str += md["text"] + "\n\n"
-        # If there are any URLs in the metadata, add them to context
+        # If there are any URLs in the metadata, add them to the context
         if "urls" in md:
             url_list_str = "\n".join(md["urls"])
             print(f"[DEBUG] Found {len(md['urls'])} URLs in metadata: {md['urls']}")
@@ -116,8 +116,7 @@ def chat():
     raw_llm_output = agent.run(user_message, context_str)
     if not raw_llm_output:
         return jsonify({
-            "long_response": "Sorry, encountered an error generating the answer.",
-            "short_response": "",
+            "conversation_answer": "Sorry, encountered an error generating the answer.",
             "audio_url": "",
             "media_urls": []
         })
@@ -127,30 +126,27 @@ def chat():
     print(raw_llm_output)
 
     # 4) Parse the LLM JSON result
-    long_answer = ""
-    short_answer = ""
+    conversation_answer = ""
     media_urls = []
     try:
         parsed = json.loads(raw_llm_output)
-        long_answer = parsed.get("long_answer", "").strip()
-        short_answer = parsed.get("short_answer", "").strip()
+        conversation_answer = parsed.get("conversation_answer", "").strip()
         media_urls = parsed.get("media_urls", [])
         if not isinstance(media_urls, list):
             media_urls = []
     except Exception:
-        print("LLM output not valid JSON. Fallback to entire text as long_answer.")
-        long_answer = raw_llm_output
-        short_answer = "Here is a short summary."
+        print("LLM output not valid JSON. Fallback to entire text as conversation_answer.")
+        conversation_answer = raw_llm_output
         media_urls = []
 
     if media_urls:
         print(f"[DEBUG] LLM returned these media URLs: {media_urls}")
 
-    # 5) Add agent's short answer to the conversation
-    agent.add_agent_message(short_answer)
+    # 5) Add agent's conversation_answer to the conversation
+    agent.add_agent_message(conversation_answer)
 
-    # 6) Generate TTS from short_answer
-    audio_data = voice.generate_tts(short_answer)
+    # 6) Generate TTS from conversation_answer
+    audio_data = voice.generate_tts(conversation_answer)
     if not audio_data:
         audio_url = ""
     else:
@@ -163,8 +159,7 @@ def chat():
 
     # 7) Return the JSON response
     return jsonify({
-        "long_response": long_answer,
-        "short_response": short_answer,
+        "conversation_answer": conversation_answer,
         "audio_url": audio_url,
         "media_urls": media_urls
     })
