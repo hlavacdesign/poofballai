@@ -56,6 +56,10 @@ public class TerminalChatUI : MonoBehaviour
     [Tooltip("Reference to the CameraFOVAnimator for the dramatic reveal.")]
     public CameraFOVAnimator cameraFOV;
 
+    [Header("Gallery")]
+    [Tooltip("Prefab for the GalleryBox, which will display multiple images.")]
+    public GameObject galleryBoxPrefab;
+
     // Internal store of whichever URL we decide to use:
     private string activeBackendUrl;
 
@@ -94,83 +98,200 @@ public class TerminalChatUI : MonoBehaviour
     /// </summary>
     private IEnumerator OpeningSequence()
     {
-        yield return StartCoroutine(SendRequestToLLM("hello", skipCreateNewInput: true));
+        yield return StartCoroutine(SendRequestToLLM("hello, who are you?", skipCreateNewInput: true));
         CreateNewInputBox();
     }
 
-    /// <summary>
-    /// Overload for SendRequestToLLM that can skip the "create new input" step
-    /// so we can do the opening sequence without showing the box early.
-    /// </summary>
-    private IEnumerator SendRequestToLLM(string userMessage, bool skipCreateNewInput)
+
+/// <summary>
+/// Helper coroutine aggregator that starts all passed coroutines in parallel
+/// and yields until they have ALL completed.
+/// </summary>
+private IEnumerator WaitForAllCoroutines(params IEnumerator[] routines)
+{
+    // Start each IEnumerator as its own Coroutine.
+    List<Coroutine> runningCoroutines = new List<Coroutine>();
+    foreach (var routine in routines)
     {
-        string jsonData = "{\"message\": \"" + userMessage.Replace("\"", "\\\"") + "\"}";
-        using (UnityWebRequest www = new UnityWebRequest(activeBackendUrl, "POST"))
+        if (routine == null) 
+            continue;
+        runningCoroutines.Add(StartCoroutine(routine));
+    }
+
+    // Wait for them all
+    foreach (var coro in runningCoroutines)
+    {
+        yield return coro;
+    }
+}
+
+/// <summary>
+/// Overload for SendRequestToLLM that can skip the "create new input" step
+/// so we can do the opening sequence without showing the box early.
+///
+/// Now we start text-typing and audio coroutines in parallel.
+/// The image loading (if any) also begins immediately in parallel.
+/// </summary>
+private IEnumerator SendRequestToLLM(string userMessage, bool skipCreateNewInput)
+{
+    // Optionally show loading crumbs
+    if (skipCreateNewInput && crumbs != null) crumbs.StartCrumbs();
+
+    string jsonData = "{\"message\": \"" + userMessage.Replace("\"", "\\\"") + "\"}";
+    using (UnityWebRequest www = new UnityWebRequest(activeBackendUrl, "POST"))
+    {
+        byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonData);
+        www.uploadHandler = new UploadHandlerRaw(bodyRaw);
+        www.downloadHandler = new DownloadHandlerBuffer();
+        www.SetRequestHeader("Content-Type", "application/json");
+
+        yield return www.SendWebRequest();
+
+        if (www.result == UnityWebRequest.Result.Success)
         {
-            byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonData);
-            www.uploadHandler = new UploadHandlerRaw(bodyRaw);
-            www.downloadHandler = new DownloadHandlerBuffer();
-            www.SetRequestHeader("Content-Type", "application/json");
+            stopCrumbs();
 
-            yield return www.SendWebRequest();
+            // "result" is the JSON from the server
+            string result = www.downloadHandler.text;
 
-            if (www.result == UnityWebRequest.Result.Success)
+            // Parse JSON into AgentResponse object
+            AgentResponse agentResponse = null;
+            try
             {
-                stopCrumbs();
-
-                // "result" is the JSON from the server
-                string result = www.downloadHandler.text;
-
-                // Parse JSON into AgentResponse object
-                AgentResponse agentResponse = null;
-                try
-                {
-                    agentResponse = JsonUtility.FromJson<AgentResponse>(result);
-                }
-                catch
-                {
-                    CreateOutputBox("Received invalid JSON:\n" + result);
-                }
-
-                if (agentResponse != null)
-                {
-                    // Remove last line if blank
-                    RemoveLastLine();
-
-                    // Start text typing for conversation_answer
-                    Coroutine typingCoro = StartCoroutine(
-                        CreateStreamingOutputBox(agentResponse.conversation_answer)
-                    );
-
-                    // Start audio load + playback if there's an audio_url
-                    Coroutine audioCoro = null;
-                    if (!string.IsNullOrEmpty(agentResponse.audio_url))
-                    {
-                        audioCoro = StartCoroutine(DownloadAndPlayAudio(agentResponse.audio_url));
-                    }
-
-                    // Wait for text typed AND audio done (if any)
-                    yield return typingCoro;
-                    if (audioCoro != null)
-                        yield return audioCoro;
-                }
+                agentResponse = JsonUtility.FromJson<AgentResponse>(result);
             }
-            else
+            catch
             {
-                stopCrumbs();
+                CreateOutputBox("Received invalid JSON:\n" + result);
+            }
 
-                // Show error
+            if (agentResponse != null)
+            {
+                // Remove last line if blank
                 RemoveLastLine();
-                CreateOutputBox("Error: " + www.error);
+
+                // If there are any media_urls, create a gallery box immediately
+                // (images will load in parallel via their own coroutines).
+                if (agentResponse.media_urls != null && agentResponse.media_urls.Count > 0)
+                {
+                    // CreateNewLine(); // optional line break
+                    CreateGalleryBox(agentResponse.media_urls);
+                }
+
+                // Prepare coroutines for text-typing and audio
+                IEnumerator textTypingRoutine = CreateStreamingOutputBox(agentResponse.conversation_answer);
+                IEnumerator audioRoutine = null;
+                if (!string.IsNullOrEmpty(agentResponse.audio_url))
+                {
+                    audioRoutine = DownloadAndPlayAudio(agentResponse.audio_url);
+                }
+
+                // Now start them in parallel and wait until both complete (if audio is present)
+                yield return StartCoroutine(WaitForAllCoroutines(textTypingRoutine, audioRoutine));
             }
         }
-
-        // Only AFTER text typed and audio done, optionally create input box
-        if (!skipCreateNewInput)
+        else
         {
-            CreateNewInputBox();
+            stopCrumbs();
+
+            // Show error
+            RemoveLastLine();
+            CreateOutputBox("Error: " + www.error);
         }
     }
+
+    // Only AFTER text typed & audio done, optionally create input box
+    if (!skipCreateNewInput)
+    {
+        CreateNewInputBox();
+    }
+}
+
+    // / <summary>
+    // / Overload for SendRequestToLLM that can skip the "create new input" step
+    // / so we can do the opening sequence without showing the box early.
+    // / </summary>
+    // private IEnumerator SendRequestToLLM(string userMessage, bool skipCreateNewInput)
+    // {
+    //     // Optionally show loading crumbs
+    //     if (crumbs != null) crumbs.StartCrumbs();
+
+    //     string jsonData = "{\"message\": \"" + userMessage.Replace("\"", "\\\"") + "\"}";
+    //     using (UnityWebRequest www = new UnityWebRequest(activeBackendUrl, "POST"))
+    //     {
+    //         byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonData);
+    //         www.uploadHandler = new UploadHandlerRaw(bodyRaw);
+    //         www.downloadHandler = new DownloadHandlerBuffer();
+    //         www.SetRequestHeader("Content-Type", "application/json");
+
+    //         yield return www.SendWebRequest();
+
+    //         if (www.result == UnityWebRequest.Result.Success)
+    //         {
+    //             stopCrumbs();
+
+    //             // "result" is the JSON from the server
+    //             string result = www.downloadHandler.text;
+
+    //             // Parse JSON into AgentResponse object
+    //             AgentResponse agentResponse = null;
+    //             try
+    //             {
+    //                 agentResponse = JsonUtility.FromJson<AgentResponse>(result);
+    //             }
+    //             catch
+    //             {
+    //                 CreateOutputBox("Received invalid JSON:\n" + result);
+    //             }
+
+    //             if (agentResponse != null)
+    //             {
+    //                 // Remove last line if blank
+    //                 RemoveLastLine();
+
+    //                 // Now, if there are any media_urls, create a gallery box
+    //                 if (agentResponse.media_urls != null && agentResponse.media_urls.Count > 0)
+    //                 {
+    //                     CreateNewLine(); // optional: create a line break
+
+    //                     CreateGalleryBox(agentResponse.media_urls);
+    //                 }
+
+    //                 // Start text typing for conversation_answer
+    //                 Coroutine typingCoro = StartCoroutine(
+    //                     CreateStreamingOutputBox(agentResponse.conversation_answer)
+    //                 );
+
+    //                 // Start audio load + playback if there's an audio_url
+    //                 Coroutine audioCoro = null;
+    //                 if (!string.IsNullOrEmpty(agentResponse.audio_url))
+    //                 {
+    //                     audioCoro = StartCoroutine(DownloadAndPlayAudio(agentResponse.audio_url));
+    //                 }
+
+    //                 // Wait for text typed AND audio done (if any)
+    //                 yield return typingCoro;
+    //                 if (audioCoro != null)
+    //                     yield return audioCoro;
+
+    //             }
+    //         }
+    //         else
+    //         {
+    //             stopCrumbs();
+
+    //             // Show error
+    //             RemoveLastLine();
+    //             CreateOutputBox("Error: " + www.error);
+    //         }
+    //     }
+
+    //     // Only AFTER text typed and audio done, optionally create input box
+    //     if (!skipCreateNewInput)
+    //     {
+    //         CreateNewInputBox();
+    //     }
+    // }
 
     /// <summary>
     /// Normal usage (the user typed something). 
@@ -277,8 +398,8 @@ public class TerminalChatUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Spawns a new input box at the bottom for the user to type.
-    /// Then forcibly re-scrolls so it's visible.
+    /// Creates a new input box at the bottom for user typing,
+    /// then forcibly scrolls so it's visible.
     /// </summary>
     private void CreateNewInputBox()
     {
@@ -367,6 +488,35 @@ public class TerminalChatUI : MonoBehaviour
         {
             LayoutRebuilder.ForceRebuildLayoutImmediate(scrollRect.content);
             scrollRect.normalizedPosition = new Vector2(0, 0);
+        }
+    }
+
+    /// <summary>
+    /// Instantiates a GalleryBox and initializes it with the given image URLs.
+    /// </summary>
+    private void CreateGalleryBox(List<string> imageUrls)
+    {
+        if (galleryBoxPrefab == null)
+        {
+            Debug.LogWarning("No GalleryBox prefab assigned!");
+            return;
+        }
+
+        // Instantiate the gallery box as a child of contentTransform
+        GameObject galleryObj = Instantiate(galleryBoxPrefab, contentTransform);
+
+        // Scroll after creation
+        ScrollToBottomNow();
+
+        // Initialize the gallery with the provided URLs
+        GalleryBox gallery = galleryObj.GetComponent<GalleryBox>();
+        if (gallery != null)
+        {
+            gallery.Initialize(imageUrls);
+        }
+        else
+        {
+            Debug.LogWarning("GalleryBox component not found on prefab.");
         }
     }
 }

@@ -814,6 +814,7 @@ MonoBehaviour:
   hostedBackendUrl: https://poofballai.onrender.com/chat
   audioSource: {fileID: 963194230}
   cameraFOV: {fileID: 963194231}
+  galleryBoxPrefab: {fileID: 9186482225001720522, guid: c3be0b672353448279f50a95f3a737d7, type: 3}
   crumbs: {fileID: 1680357558}
 --- !u!114 &608975021
 MonoBehaviour:
@@ -1223,7 +1224,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 6777796593639966480, guid: 2e9469fffc21c44de8bfab2b0774fecc, type: 3}
       propertyPath: m_text
-      value: .075
+      value: .076
       objectReference: {fileID: 0}
     - target: {fileID: 6777796593639966480, guid: 2e9469fffc21c44de8bfab2b0774fecc, type: 3}
       propertyPath: m_fontStyle
